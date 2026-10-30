@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculadora de fútbol</title>
+  <style>
+    body { font: 16px Arial, sans-serif; max-width: 620px; margin: 40px auto; padding: 0 18px; }
+    input, button { box-sizing: border-box; width: 100%; padding: 12px; margin: 8px 0; }
+    button { cursor: pointer; }
+    #resultado { white-space: pre-wrap; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Calculadora de fútbol</h1>
+  <p>Escribe los equipos y consultaré sus estadísticas para calcular el veredicto.</p>
+  <form id="formulario">
+    <label>Equipo local</label>
+    <input name="local" required>
+    <label>Equipo visitante</label>
+    <input name="visitante" required>
+    <button id="boton">Calcular</button>
+  </form>
+  <div id="resultado" role="status"></div>
+  <script>
+    const form = document.querySelector("#formulario");
+    const boton = document.querySelector("#boton");
+    const salida = document.querySelector("#resultado");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      boton.disabled = true;
+      salida.textContent = "Buscando datos y calculando…";
+      try {
+        const respuesta = await fetch("/.netlify/functions/calcular", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ local: form.local.value.trim(), visitante: form.visitante.value.trim() })
+        });
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar el cálculo.");
+        salida.textContent = Veredicto: ${datos.veredicto}\n\nPromedios guardados en Google Sheets (J6:K13).;
+      } catch (error) {
+        salida.textContent = Error: ${error.message};
+      } finally {
+        boton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
