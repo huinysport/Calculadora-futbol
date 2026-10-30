@@ -68,7 +68,7 @@ async function buscarEstadisticas(local, visitante) {
     '    "tiros_contra": 0, "corners_contra": 0, "tiros_arco_contra": 0, "goles_contra": 0',
     "  }",
     "}",
-    "No inventes datos. Si no puedes confirmar una estadística, responde con error indicando cuál falta."
+    'No inventes datos. Si no puedes confirmar una estadística, responde únicamente {"error": "indica cuál falta"}.'
   ].join("\n");
 
   const url =
@@ -80,7 +80,8 @@ async function buscarEstadisticas(local, visitante) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }]
+      tools: [{ google_search: {} }],
+      generationConfig: { temperature: 0 }
     })
   });
 
@@ -100,7 +101,12 @@ async function buscarEstadisticas(local, visitante) {
   const json = texto.match(/\{[\s\S]*\}/);
   if (!json) throw new Error("La respuesta de Gemini no tenía el formato esperado.");
 
-  return JSON.parse(json[0]);
+  const resultado = JSON.parse(json[0]);
+  if (resultado.error) {
+    throw new Error("Gemini no pudo confirmar los datos: " + resultado.error);
+  }
+
+  return resultado;
 }
 
 function validarEstadisticas(data) {
@@ -112,8 +118,9 @@ function validarEstadisticas(data) {
   for (const equipo of ["local", "visitante"]) {
     if (!data[equipo]) throw new Error("Faltan datos del equipo " + equipo + ".");
     for (const campo of campos) {
-      const valor = Number(data[equipo][campo]);
-      if (!Number.isFinite(valor)) {
+      const crudo = data[equipo][campo];
+      const valor = Number(crudo);
+      if (crudo === null || crudo === undefined || crudo === "" || !Number.isFinite(valor) || valor < 0) {
         throw new Error("Falta un dato verificable: " + equipo + "." + campo);
       }
       data[equipo][campo] = valor;
