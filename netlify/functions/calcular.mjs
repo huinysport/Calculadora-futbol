@@ -72,7 +72,7 @@ async function buscarEstadisticas(local, visitante) {
 
   // Usamos el modelo gemini-2.5-flash compatible con la API actual
   const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini3.8-flash:generateContent?key=" +
     encodeURIComponent(process.env.GEMINI_API_KEY);
 
   const response = await fetch(url, {
