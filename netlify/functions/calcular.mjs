@@ -53,11 +53,11 @@ export default async (request) => {
 
 async function buscarEstadisticas(local, visitante) {
   const prompt = [
-    "Busca estadísticas verificables de los últimos 10 partidos de liga:",
-    "- " + local + ": sus 10 partidos más recientes como equipo local.",
-    "- " + visitante + ": sus 10 partidos más recientes como equipo visitante.",
+    "Proporciona los promedios estimados por partido basados en los últimos 10 partidos de liga para:",
+    "- " + local + " (como equipo local)",
+    "- " + visitante + " (como equipo visitante)",
     "",
-    "Devuelve únicamente JSON con este formato. Cada valor debe ser el promedio por partido:",
+    "Devuelve únicamente JSON con este formato exacto:",
     "{",
     '  "local": {',
     '    "tiros_favor": 0, "corners_favor": 0, "tiros_arco_favor": 0, "goles_favor": 0,',
@@ -67,13 +67,11 @@ async function buscarEstadisticas(local, visitante) {
     '    "tiros_favor": 0, "corners_favor": 0, "tiros_arco_favor": 0, "goles_favor": 0,',
     '    "tiros_contra": 0, "corners_contra": 0, "tiros_arco_contra": 0, "goles_contra": 0',
     "  }",
-    "}",
-    'No inventes datos. Si no puedes confirmar una estadística, responde únicamente {"error": "indica cuál falta"}.'
+    "}"
   ].join("\n");
 
-  // Modelo actualizado a gemini-3.8-flash
   const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" +
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" +
     encodeURIComponent(process.env.GEMINI_API_KEY);
 
   const response = await fetch(url, {
@@ -81,14 +79,13 @@ async function buscarEstadisticas(local, visitante) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
       generationConfig: { temperature: 0 }
     })
   });
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error((data.error && data.error.message) || "Gemini no pudo buscar los datos.");
+    throw new Error((data.error && data.error.message) || "Gemini no pudo procesar los datos.");
   }
 
   const partes =
