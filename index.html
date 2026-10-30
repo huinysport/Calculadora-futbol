@@ -23,28 +23,40 @@
   </form>
   <div id="resultado" role="status"></div>
   <script>
-    const form = document.querySelector("#formulario");
-    const boton = document.querySelector("#boton");
-    const salida = document.querySelector("#resultado");
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
+    var form = document.querySelector("#formulario");
+    var boton = document.querySelector("#boton");
+    var salida = document.querySelector("#resultado");
+
+    async function calcular() {
       boton.disabled = true;
       salida.textContent = "Buscando datos y calculando…";
       try {
-        const respuesta = await fetch("/.netlify/functions/calcular", {
+        var respuesta = await fetch("/.netlify/functions/calcular", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ local: form.local.value.trim(), visitante: form.visitante.value.trim() })
         });
-        const datos = await respuesta.json();
+        var datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar el cálculo.");
-        salida.textContent = Veredicto: ${datos.veredicto}\n\nPromedios guardados en Google Sheets (J6:K13).;
+        salida.textContent = "Veredicto: " + datos.veredicto + "\n\nPromedios guardados en Google Sheets (J6:K13).";
       } catch (error) {
-        salida.textContent = Error: ${error.message};
+        salida.textContent = "Error: " + error.message;
       } finally {
         boton.disabled = false;
       }
+    }
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      calcular();
     });
+
+    var params = new URLSearchParams(location.search);
+    if (params.get("local") && params.get("visitante")) {
+      form.local.value = params.get("local");
+      form.visitante.value = params.get("visitante");
+      calcular();
+    }
   </script>
 </body>
 </html>
