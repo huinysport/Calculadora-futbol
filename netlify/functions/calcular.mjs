@@ -60,7 +60,7 @@ export default async (request) => {
     return respuesta(200, { veredicto: veredicto, estadisticas: valores });
   } catch (error) {
     console.error("Error detallado en la función:", error);
-    return respuesta(500, { error: error.message || "Ocurrió un error interno en el servidor." });
+    return respuesta(500, { error: "DETALLE: " + (error.message || "Ocurrió un error desconocido.") });
   }
 };
 
