@@ -70,7 +70,7 @@ async function buscarEstadisticas(local, visitante) {
     "}"
   ].join("\n");
 
-  // Usamos el modelo gemini-2.5-flash compatible con la API actual
+  // Usamos el modelo gemini-3.8-flash compatible con la API actual
   const url =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini3.8-flash:generateContent?key=" +
     encodeURIComponent(process.env.GEMINI_API_KEY);
