@@ -9,7 +9,16 @@ export default async (request) => {
   }
 
   try {
-    const { local, visitante } = await request.json();
+    const bodyText = await request.text();
+    let local, visitante;
+    
+    try {
+      const dataJson = JSON.parse(bodyText);
+      local = dataJson.local;
+      visitante = dataJson.visitante;
+    } catch (e) {
+      return respuesta(400, { error: "Formato de petición inválido." });
+    }
 
     if (!local || !visitante || !local.trim() || !visitante.trim()) {
       return respuesta(400, { error: "Escribe los nombres de los dos equipos." });
@@ -17,6 +26,10 @@ export default async (request) => {
 
     const estadisticas = await buscarEstadisticas(local.trim(), visitante.trim());
     const valores = validarEstadisticas(estadisticas);
+
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      throw new Error("Falta configurar la variable GOOGLE_SERVICE_ACCOUNT_JSON en Netlify.");
+    }
 
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
     const auth = new google.auth.GoogleAuth({
@@ -46,8 +59,8 @@ export default async (request) => {
 
     return respuesta(200, { veredicto: veredicto, estadisticas: valores });
   } catch (error) {
-    console.error(error);
-    return respuesta(500, { error: error.message || "Ocurrió un error." });
+    console.error("Error detallado en la función:", error);
+    return respuesta(500, { error: error.message || "Ocurrió un error interno en el servidor." });
   }
 };
 
@@ -57,7 +70,7 @@ async function buscarEstadisticas(local, visitante) {
     "- " + local + " (como equipo local)",
     "- " + visitante + " (como equipo visitante)",
     "",
-    "Devuelve únicamente JSON con este formato exacto:",
+    "Devuelve únicamente JSON con este formato exacto y sin texto adicional:",
     "{",
     '  "local": {',
     '    "tiros_favor": 0, "corners_favor": 0, "tiros_arco_favor": 0, "goles_favor": 0,',
@@ -70,10 +83,14 @@ async function buscarEstadisticas(local, visitante) {
     "}"
   ].join("\n");
 
-  // Endpoint actualizado con el modelo gemini-3.8-flash
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Falta configurar la variable GEMINI_API_KEY en Netlify.");
+  }
+
   const url =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" +
-    encodeURIComponent(process.env.GEMINI_API_KEY);
+    encodeURIComponent(apiKey);
 
   const response = await fetch(url, {
     method: "POST",
@@ -97,12 +114,12 @@ async function buscarEstadisticas(local, visitante) {
 
   if (!texto) throw new Error("Gemini no devolvió estadísticas.");
 
-  const json = texto.match(/\{[\s\S]*\}/);
-  if (!json) throw new Error("La respuesta de Gemini no tenía el formato esperado.");
+  const jsonMatch = texto.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("La respuesta de Gemini no tenía el formato JSON esperado.");
 
-  const resultado = JSON.parse(json[0]);
+  const resultado = JSON.parse(jsonMatch[0]);
   if (resultado.error) {
-    throw new Error("Gemini no pudo confirmar los datos: " + resultado.error);
+    throw new Error("Gemini indicó un error: " + resultado.error);
   }
 
   return resultado;
@@ -120,7 +137,7 @@ function validarEstadisticas(data) {
       const crudo = data[equipo][campo];
       const valor = Number(crudo);
       if (crudo === null || crudo === undefined || crudo === "" || !Number.isFinite(valor) || valor < 0) {
-        throw new Error("Falta un dato verificable: " + equipo + "." + campo);
+        throw new Error("Falta un dato válido para: " + equipo + "." + campo);
       }
       data[equipo][campo] = valor;
     }
