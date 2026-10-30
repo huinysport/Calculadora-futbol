@@ -1,50 +1,131 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Calculadora de fútbol</title>
-  <style>
-    body { font: 16px Arial, sans-serif; max-width: 620px; margin: 40px auto; padding: 0 18px; }
-    input, button { box-sizing: border-box; width: 100%; padding: 12px; margin: 8px 0; }
-    button { cursor: pointer; }
-    #resultado { white-space: pre-wrap; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <h1>Calculadora de fútbol</h1>
-  <p>Escribe los equipos y consultaré sus estadísticas para calcular el veredicto.</p>
-  <form id="formulario">
-    <label>Equipo local</label>
-    <input name="local" required>
-    <label>Equipo visitante</label>
-    <input name="visitante" required>
-    <button id="boton">Calcular</button>
-  </form>
-  <div id="resultado" role="status"></div>
-  <script>
-    const form = document.querySelector("#formulario");
-    const boton = document.querySelector("#boton");
-    const salida = document.querySelector("#resultado");
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      boton.disabled = true;
-      salida.textContent = "Buscando datos y calculando…";
-      try {
-        const respuesta = await fetch("/.netlify/functions/calcular", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ local: form.local.value.trim(), visitante: form.visitante.value.trim() })
-        });
-        const datos = await respuesta.json();
-        if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar el cálculo.");
-        salida.textContent = Veredicto: ${datos.veredicto}\n\nPromedios guardados en Google Sheets (J6:K13).;
-      } catch (error) {
-        salida.textContent = Error: ${error.message};
-      } finally {
-        boton.disabled = false;
-      }
+import { google } from "googleapis";
+
+const SPREADSHEET_ID = "1Bdg2g1XQo5tDpzqbn4cMP1NqYCnEvimMNnp4VA-YlM0";
+const SHEET_NAME = "presur";
+
+export default async (request) => {
+  if (request.method !== "POST") {
+    return respuesta(405, { error: "Método no permitido." });
+  }
+
+  try {
+    const { local, visitante } = await request.json();
+
+    if (!local?.trim() || !visitante?.trim()) {
+      return respuesta(400, { error: "Escribe los nombres de los dos equipos." });
+    }
+
+    const estadisticas = await buscarEstadisticas(local.trim(), visitante.trim());
+    const valores = validarEstadisticas(estadisticas);
+
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     });
-  </script>
-</body>
-</html>
+    const sheets = google.sheets({ version: "v4", auth });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: '${SHEET_NAME}'!J6:K13,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: valores.map((fila) => [fila.local, fila.visitante]) }
+    });
+
+    const lectura = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: '${SHEET_NAME}'!E10,
+      valueRenderOption: "FORMATTED_VALUE"
+    });
+
+    const veredicto = lectura.data.values?.[0]?.[0];
+    if (!veredicto) {
+      throw new Error("La celda E10 está vacía o no se pudo leer.");
+    }
+
+    return respuesta(200, { veredicto, estadisticas: valores });
+  } catch (error) {
+    console.error(error);
+    return respuesta(500, { error: error.message || "Ocurrió un error." });
+  }
+};
+
+async function buscarEstadisticas(local, visitante) {
+  const prompt = `
+Busca estadísticas verificables de los últimos 10 partidos de liga:
+- ${local}: sus 10 partidos más recientes como equipo local.
+- ${visitante}: sus 10 partidos más recientes como equipo visitante.
+
+Devuelve únicamente JSON con este formato. Cada valor debe ser el promedio por partido:
+{
+  "local": {
+    "tiros_favor": 0, "corners_favor": 0, "tiros_arco_favor": 0, "goles_favor": 0,
+    "tiros_contra": 0, "corners_contra": 0, "tiros_arco_contra": 0, "goles_contra": 0
+  },
+  "visitante": {
+    "tiros_favor": 0, "corners_favor": 0, "tiros_arco_favor": 0, "goles_favor": 0,
+    "tiros_contra": 0, "corners_contra": 0, "tiros_arco_contra": 0, "goles_contra": 0
+  }
+}
+No inventes datos. Si no puedes confirmar una estadística, responde con error indicando cuál falta.
+`;
+
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+      encodeURIComponent(process.env.GEMINI_API_KEY),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }]
+      })
+    }
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Gemini no pudo buscar los datos.");
+  }
+
+  const texto = data.candidates?.[0]?.content?.parts
+    ?.map((parte) => parte.text || "")
+    .join("");
+
+  if (!texto) throw new Error("Gemini no devolvió estadísticas.");
+
+  const json = texto.match(/\{[\s\S]*\}/);
+  if (!json) throw new Error("La respuesta de Gemini no tenía el formato esperado.");
+
+  return JSON.parse(json[0]);
+}
+
+function validarEstadisticas(data) {
+  const campos = [
+    "tiros_favor", "corners_favor", "tiros_arco_favor", "goles_favor",
+    "tiros_contra", "corners_contra", "tiros_arco_contra", "goles_contra"
+  ];
+
+  for (const equipo of ["local", "visitante"]) {
+    if (!data[equipo]) throw new Error(Faltan datos del equipo ${equipo}.);
+    for (const campo of campos) {
+      const valor = Number(data[equipo][campo]);
+      if (!Number.isFinite(valor)) {
+        throw new Error(Falta un dato verificable: ${equipo}.${campo});
+      }
+      data[equipo][campo] = valor;
+    }
+  }
+
+  return campos.map((campo) => ({
+    local: data.local[campo],
+    visitante: data.visitante[campo]
+  }));
+}
+
+function respuesta(status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+}
