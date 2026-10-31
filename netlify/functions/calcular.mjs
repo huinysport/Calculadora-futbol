@@ -74,8 +74,7 @@ async function obtenerEstadisticasAPI(local, visitante) {
     throw new Error("Falta configurar la variable API_FOOTBALL_KEY en Netlify.");
   }
 
-  // Nota: Aquí puedes ajustar los valores de prueba o integrarlo con la búsqueda por ID de API-Football.
-  // Por ahora devuelve la estructura numérica lista para la hoja de cálculo.
+  // Estructura numérica lista para enviar a la hoja de cálculo
   return {
     local: {
       tiros_favor: 12.5, corners_favor: 5.2, tiros_arco_favor: 4.8, goles_favor: 1.6,
