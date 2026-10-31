@@ -1,4 +1,4 @@
-{ google } from "googleapis";
+import{ google } from "googleapis";
 
 const SPREADSHEET_ID = "1Bdg2g1XQo5tDpzqbn4cMP1NqYCnEvimMNnp4VA-YlM0";
 const SHEET_NAME = "presur";
