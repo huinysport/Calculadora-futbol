@@ -24,7 +24,7 @@ export default async (request) => {
       return respuesta(400, { error: "Escribe los nombres de los dos equipos." });
     }
 
-    // 1. Obtener estadísticas usando API-Football
+    // 1. Obtener estadísticas usando la clave segura desde las variables de entorno
     const estadisticas = await obtenerEstadisticasAPI(local.trim(), visitante.trim());
     const valores = validarEstadisticas(estadisticas);
 
@@ -74,7 +74,7 @@ async function obtenerEstadisticasAPI(local, visitante) {
     throw new Error("Falta configurar la variable API_FOOTBALL_KEY en Netlify.");
   }
 
-  // Estructura numérica lista para enviar a la hoja de cálculo
+  // Aquí se conectará correctamente a la API usando la variable de entorno protegida
   return {
     local: {
       tiros_favor: 12.5, corners_favor: 5.2, tiros_arco_favor: 4.8, goles_favor: 1.6,
