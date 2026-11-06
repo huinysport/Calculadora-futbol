@@ -1,4 +1,4 @@
-{ google } from "googleapis";
+IMPORT{ google } from "googleapis";
 
 const SPREADSHEET_ID = "1Bdg2g1XQo5tDpzqbn4cMP1NqYCnEvimMNnp4VA-YlM0";
 const HOJA_CACHE = "cache";
