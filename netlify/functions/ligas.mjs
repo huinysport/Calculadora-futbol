@@ -14,7 +14,7 @@ export default async (request) => {
 
     const r = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: "Datos!A2:J500",
+      range: "Datos!A2:J50000",
       valueRenderOption: "UNFORMATTED_VALUE"
     });
     const filas = r.data.values || [];
