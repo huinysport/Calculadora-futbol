@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora por ligas</title>
+<style>
+:root{--bg:#f2f4ef;--surface:#fff;--fg:#16211a;--muted:#667569;--line:#d5dcd2;--accent:#1c7a4b}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1511;--surface:#18211b;--fg:#e8eee9;--muted:#9bab9f;--line:#2b382f;--accent:#4fc487;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Arial,sans-serif;padding:16px}
+.w{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:22px;margin:4px 0;color:var(--accent)}
+label{font-size:15px;font-weight:600;display:block;margin-bottom:4px}
+select{width:100%;font-size:19px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;font-size:17px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:center}
+th:first-child,td:first-child{text-align:left}
+.d{font-size:17px}
+.r{border-radius:14px;padding:20px 12px;text-align:center;font-size:30px;font-weight:800;background:#7d8a80;color:#fff}
+.m{color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>Calculadora de fútbol por ligas</h1>
+<div><label>País</label><select id="pais"></select></div>
+<div><label>Equipo local</label><select id="loc"></select></div>
+<div><label>Equipo visitante</label><select id="vis"></select></div>
+<table><thead><tr><th></th><th>Local</th><th>Visitante</th></tr></thead><tbody id="tb"></tbody></table>
+<div class="d" id="dif"></div>
+<div class="r" id="res">Cargando…</div>
+<div class="m">Solo tiros y córners. Los datos vienen de tu hoja de Google.</div>
+</div>
+<script>
+var DATA = {};
+var UMB = 4.3, UMB_L = 1, UMB_V = 2;
+var $ = function (id) { return document.getElementById(id); };
+
+function llenar(sel, lista, actual) {
+  sel.innerHTML = "";
+  lista.forEach(function (t) { var o = document.createElement("option"); o.value = t; o.textContent = t; sel.appendChild(o); });
+  if (actual && lista.indexOf(actual) >= 0) sel.value = actual;
+}
+function equipos() { return (DATA[$("pais").value] || []); }
+function buscar(n) { var e = equipos().filter(function (x) { return x.equipo === n; }); return e[0]; }
+
+function paisCambio() {
+  var nombres = equipos().map(function (x) { return x.equipo; });
+  llenar($("loc"), nombres);
+  llenar($("vis"), nombres);
+  if (nombres.length > 1) $("vis").value = nombres[1];
+  calc();
+}
+
+function calc() {
+  var L = buscar($("loc").value), V = buscar($("vis").value);
+  var tb = $("tb"); tb.innerHTML = "";
+  var res = $("res"), dif = $("dif");
+  res.style.background = "#7d8a80"; res.style.color = "#fff";
+  if (!L || !V) { res.textContent = "Elige los equipos"; dif.textContent = ""; return; }
+  // v: 0 tirosF(L) 1 tirosC(L) 2 tirosF(V) 3 tirosC(V) 4 cornF(L) 5 cornC(L) 6 cornF(V) 7 cornC(V)
+  var f = function (n) { return n === null ? "-" : n.toFixed(2); };
+  var filas = [["Tiros a favor", L.v[0], V.v[2]], ["Tiros en contra", L.v[1], V.v[3]],
+               ["Córners a favor", L.v[4], V.v[6]], ["Córners en contra", L.v[5], V.v[7]]];
+  filas.forEach(function (r) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td>" + r[0] + "</td><td>" + f(r[1]) + "</td><td>" + f(r[2]) + "</td>";
+    tb.appendChild(tr);
+  });
+  var vals = [L.v[0], L.v[1], L.v[4], L.v[5], V.v[2], V.v[3], V.v[6], V.v[7]];
+  if (vals.some(function (x) { return x === null; })) { res.textContent = "Faltan datos del equipo"; dif.textContent = ""; return; }
+  var atkL = L.v[0] + L.v[4], defL = L.v[1] + L.v[5];
+  var atkV = V.v[2] + V.v[6], defV = V.v[3] + V.v[7];
+  var d = (atkL + defV) / 2 - (atkV + defL) / 2;
+  dif.textContent = "Diferencial de presión ofensiva (tiros y córners): " + d.toFixed(2).replace(".", ",");
+  var t, bg = "#7d8a80", ink = "#fff";
+  if (d >= 0) {
+    if (d > UMB) { t = "Gana local"; bg = "#84cc16"; ink = "#14210a"; }
+    else if (d >= UMB_L) { t = "Gana o empata local"; bg = "#f2c200"; ink = "#1d1a00"; }
+    else t = "Dudoso";
+  } else {
+    if (d < -UMB) { t = "Gana visitante"; bg = "#2563c9"; }
+    else if (d <= -UMB_V) { t = "Gana o empata visitante"; bg = "#ee7fae"; ink = "#2a0b19"; }
+    else t = "Dudoso";
+  }
+  res.textContent = t; res.style.background = bg; res.style.color = ink;
+}
+
+fetch("/.netlify/functions/ligas").then(function (r) { return r.json(); }).then(function (j) {
+  if (j.error) { $("res").textContent = "Error: " + j.error; return; }
+  DATA = j.paises;
+  var ps = Object.keys(DATA).sort();
+  if (!ps.length) { $("res").textContent = "La hoja Datos está vacía"; return; }
+  llenar($("pais"), ps);
+  paisCambio();
+}).catch(function (e) { $("res").textContent = "No pude cargar los datos"; });
+
+$("pais").onchange = paisCambio;
+$("loc").onchange = calc;
+$("vis").onchange = calc;
+</script>
+</body>
+</html>
