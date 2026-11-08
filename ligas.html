@@ -78,11 +78,11 @@ function calc() {
   if (d >= 0) {
     if (d > UMB) { t = "Gana local"; bg = "#84cc16"; ink = "#14210a"; }
     else if (d >= UMB_L) { t = "Gana o empata local"; bg = "#f2c200"; ink = "#1d1a00"; }
-    else t = "Dudoso";
+    else t = "BTTS SI";
   } else {
     if (d < -UMB) { t = "Gana visitante"; bg = "#2563c9"; }
     else if (d <= -UMB_V) { t = "Gana o empata visitante"; bg = "#ee7fae"; ink = "#2a0b19"; }
-    else t = "Dudoso";
+    else t = "BTTS SI";
   }
   res.textContent = t; res.style.background = bg; res.style.color = ink;
 }
