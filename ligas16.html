@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de fútbol 8 datos</title>
+<style>
+:root{--bg:#f2f4ef;--surface:#fff;--fg:#16211a;--muted:#667569;--line:#d5dcd2;--accent:#1c7a4b;--si:#1c7a4b;--no:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1511;--surface:#18211b;--fg:#e8eee9;--muted:#9bab9f;--line:#2b382f;--accent:#4fc487;--si:#4fc487;--no:#ff7b6b;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Arial,sans-serif;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.w{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:22px;margin:4px 0;color:var(--accent)}
+label{font-size:15px;font-weight:600;display:block;margin-bottom:4px}
+select,input{width:100%;font-size:19px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;font-size:16px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center}
+th:first-child,td:first-child{text-align:left}
+.d{font-size:16px;line-height:1.5}
+.r{border-radius:14px;padding:20px 12px;text-align:center;font-size:30px;font-weight:800;background:#7d8a80;color:#fff}
+.m{color:var(--muted);font-size:14px}
+.cuotas{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.fila2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cuotas input{background:var(--bg)}
+.val{font-size:17px;line-height:1.5}
+.si{color:var(--si);font-weight:700}.no{color:var(--no);font-weight:700}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>Calculadora de fútbol — 8 datos</h1>
+<div><label>Competición</label><select id="comp"></select></div>
+<div><label>Equipo local (en casa)</label><select id="loc"></select></div>
+<div><label>Equipo visitante (fuera)</label><select id="vis"></select></div>
+<table><thead><tr><th></th><th>Local</th><th>Visitante</th></tr></thead><tbody id="tb"></tbody></table>
+<div class="d" id="dif"></div>
+<div class="r" id="res">Cargando…</div>
+<div class="cuotas">
+<div class="m" style="font-weight:700;color:var(--fg);font-size:16px">Over / Under 2.5 con cuota</div>
+<div class="fila2"><div><label>Cuota Over 2.5</label><input id="co" inputmode="decimal" placeholder="1,90"></div>
+<div><label>Cuota Under 2.5</label><input id="cu" inputmode="decimal" placeholder="1,90"></div></div>
+<div id="val" class="val"></div>
+</div>
+<div class="m">Los datos vienen de tu hoja de Google. El local usa sus datos en casa y el visitante los de fuera.</div>
+</div>
+<script>
+// Mínimos del veredicto (cámbialos aquí si quieres)
+var GANA_PRES = 4.5, GANA_GOL = 1.5;      // Gana: mayor que
+var LOCAL_PRES = 1, LOCAL_GOL = 0.5;      // Gana o empata local: desde
+var VISITA_PRES = 2, VISITA_GOL = 1;      // Gana o empata visitante: desde (en negativo)
+var TEXTO_SIN_VEREDICTO = "BTTS Sí";
+
+var DATA = {}, TPRES = null;
+var $ = function (id) { return document.getElementById(id); };
+var ETIQ = ["Tiros a favor", "Córneres a favor", "Tiros al arco a favor", "Goles a favor",
+            "Tiros en contra", "Córneres en contra", "Tiros al arco en contra", "Goles en contra"];
+
+function llenar(sel, lista) {
+  sel.innerHTML = "";
+  lista.forEach(function (t) { var o = document.createElement("option"); o.value = t; o.textContent = t; sel.appendChild(o); });
+}
+function equipos() { return DATA[$("comp").value] || []; }
+function buscar(n) { var e = equipos().filter(function (x) { return x.e === n; }); return e[0]; }
+function f2(x) { return x.toFixed(2).replace(".", ","); }
+function num(s) { var n = parseFloat(String(s).replace(",", ".")); return isNaN(n) ? null : n; }
+
+function compCambio() {
+  var nombres = equipos().map(function (x) { return x.e; }).sort(function (a, b) { return a.localeCompare(b, "es"); });
+  llenar($("loc"), nombres); llenar($("vis"), nombres);
+  if (nombres.length > 1) $("vis").value = nombres[1];
+  calc();
+}
+
+function calc() {
+  TPRES = null;
+  var L = buscar($("loc").value), V = buscar($("vis").value);
+  var tb = $("tb"); tb.innerHTML = "";
+  var res = $("res"), dif = $("dif");
+  res.style.background = "#7d8a80"; res.style.color = "#fff";
+  if (!L || !V) { res.textContent = "Elige los equipos"; dif.textContent = ""; valor(); return; }
+  var l = L.v.slice(0, 8), v = V.v.slice(8, 16); // local en casa, visitante fuera
+  for (var i = 0; i < 8; i++) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td>" + ETIQ[i] + "</td><td>" + (l[i] === null ? "-" : f2(l[i])) + "</td><td>" + (v[i] === null ? "-" : f2(v[i])) + "</td>";
+    tb.appendChild(tr);
+  }
+  if (l.concat(v).some(function (x) { return x === null; })) { res.textContent = "Faltan datos del equipo"; dif.textContent = ""; valor(); return; }
+  // presión = tiros + córneres; goles = tiros al arco + goles
+  var atkL = l[0] + l[1], defL = l[4] + l[5], atkV = v[0] + v[1], defV = v[4] + v[5];
+  var gAtkL = l[2] + l[3], gDefL = l[6] + l[7], gAtkV = v[2] + v[3], gDefV = v[6] + v[7];
+  var dP = (atkL + defV) / 2 - (atkV + defL) / 2;
+  var dG = (gAtkL + gDefV) / 2 - (gAtkV + gDefL) / 2;
+  TPRES = (atkL + defV) / 2 + (atkV + defL) / 2;
+  dif.innerHTML = "Diferencial de presión ofensiva (tiros y córneres): <b>" + f2(dP) + "</b><br>Diferencial de goles (tiros al arco y goles): <b>" + f2(dG) + "</b>";
+  var t = TEXTO_SIN_VEREDICTO, bg = "#7d8a80", ink = "#fff";
+  if ((dP !== 0 ? dP : dG) >= 0) {
+    if (dG > GANA_GOL && dP > GANA_PRES) { t = "Gana local"; bg = "#84cc16"; ink = "#14210a"; }
+    else if (dG >= LOCAL_GOL && dP >= LOCAL_PRES) { t = "Gana o empata local"; bg = "#f2c200"; ink = "#1d1a00"; }
+  } else {
+    if (dG < -GANA_GOL && dP < -GANA_PRES) { t = "Gana visitante"; bg = "#2563c9"; }
+    else if (dG <= -VISITA_GOL && dP <= -VISITA_PRES) { t = "Gana o empata visitante"; bg = "#ee7fae"; ink = "#2a0b19"; }
+  }
+  res.textContent = t; res.style.background = bg; res.style.color = ink;
+  valor();
+}
+
+function valor() {
+  var out = $("val");
+  if (TPRES === null) { out.innerHTML = ""; return; }
+  var co = num($("co").value), cu = num($("cu").value);
+  if (!co || !cu || co <= 1 || cu <= 1) { out.textContent = "Escribe las dos cuotas (mayores que 1) para ver si tienen valor."; return; }
+  var p = 1 / (1 + Math.exp(-(-2.4287 + 0.007 * TPRES + 3.8912 * (1 / co))));
+  var nO = 1 / p, nU = 1 / (1 - p);
+  function linea(nombre, casa, nuestra) {
+    var ok = casa > nuestra;
+    return "<div>" + nombre + ": casa " + f2(casa) + " · nuestra " + f2(nuestra) + " → <span class='" + (ok ? "si'>🟢 SÍ tiene valor" : "no'>🔴 NO tiene valor") + "</span></div>";
+  }
+  out.innerHTML = "<div class='m'>Presión total del partido: " + f2(TPRES) + " · Prob. Over: " + (p * 100).toFixed(1).replace(".", ",") + "%</div>" +
+    linea("Over 2.5", co, nO) + linea("Under 2.5", cu, nU);
+}
+
+fetch("/api/ligas16").then(function (r) { return r.json(); }).then(function (j) {
+  if (j.error) { $("res").textContent = "Error: " + j.error; return; }
+  DATA = j.competiciones;
+  var cs = Object.keys(DATA).sort(function (a, b) { return a.localeCompare(b, "es"); });
+  if (!cs.length) { $("res").textContent = "La hoja Datos está vacía"; return; }
+  llenar($("comp"), cs); compCambio();
+}).catch(function () { $("res").textContent = "No pude cargar los datos"; });
+
+$("comp").onchange = compCambio; $("loc").onchange = calc; $("vis").onchange = calc;
+$("co").oninput = valor; $("cu").oninput = valor;
+</script>
+</body>
+</html>
