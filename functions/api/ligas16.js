@@ -3,8 +3,9 @@
 
 const SPREADSHEET_ID = "1atnKmdlGH0prq5U2k2p7ecRo55u7yqc_-THoMRyLF8E";
 const RANGO = "Datos!A2:R20000";
+// Los códigos están en la misma hoja (pestaña "Codigos")
 // Hoja donde están los códigos de acceso (pestaña "Codigos": A código, B cliente, C activo SI/NO, D dispositivo, E último uso)
-const CODIGOS_ID = "1TyYYxX6rFJt8Dvyr21LyajOIuJrK3aQ7LHi_hBEEoXs";
+const CODIGOS_ID = SPREADSHEET_ID;
 const MINUTOS_REGISTRO = 10; // cada cuántos minutos se actualiza "Último uso"
 const SEGUNDOS_CACHE = 60; // guarda los datos 60 s para no consultar a Google en cada visita
 
