@@ -61,7 +61,8 @@ var MARGEN_VALOR = 0.05;
 var GANA_PRES = 4.5, GANA_GOL = 1.5;      // Gana: mayor que
 var LOCAL_PRES = 1, LOCAL_GOL = 0.5;      // Gana o empata local: desde
 var VISITA_PRES = 2, VISITA_GOL = 1;      // Gana o empata visitante: desde (en negativo)
-var TEXTO_SIN_VEREDICTO = "BTTS Sí";
+// Si no se cumplen los mínimos de "Gana" ni de "Gana o empata", sale esto según el lado:
+var TEXTO_POSIBLE_LOCAL = "Posible gana o empata local", TEXTO_POSIBLE_VISITA = "Posible gana o empata visitante";
 
 var DATA = {}, TPRES = null;
 var $ = function (id) { return document.getElementById(id); };
@@ -105,13 +106,15 @@ function calc() {
   var dG = (gAtkL + gDefV) / 2 - (gAtkV + gDefL) / 2;
   TPRES = (atkL + defV) / 2 + (atkV + defL) / 2;
   dif.innerHTML = "Diferencial de presión ofensiva (tiros y córneres): <b>" + f2(dP) + "</b><br>Diferencial de goles (tiros al arco y goles): <b>" + f2(dG) + "</b>";
-  var t = TEXTO_SIN_VEREDICTO, bg = "#7d8a80", ink = "#fff";
+  var t, bg = "#7d8a80", ink = "#fff";
   if ((dP !== 0 ? dP : dG) >= 0) {
     if (dG > GANA_GOL && dP > GANA_PRES) { t = "Gana local"; bg = "#84cc16"; ink = "#14210a"; }
     else if (dG >= LOCAL_GOL && dP >= LOCAL_PRES) { t = "Gana o empata local"; bg = "#f2c200"; ink = "#1d1a00"; }
+    else { t = TEXTO_POSIBLE_LOCAL; bg = "#f6e58d"; ink = "#3a3200"; }
   } else {
     if (dG < -GANA_GOL && dP < -GANA_PRES) { t = "Gana visitante"; bg = "#2563c9"; }
     else if (dG <= -VISITA_GOL && dP <= -VISITA_PRES) { t = "Gana o empata visitante"; bg = "#ee7fae"; ink = "#2a0b19"; }
+    else { t = TEXTO_POSIBLE_VISITA; bg = "#f7c6da"; ink = "#2a0b19"; }
   }
   res.textContent = t; res.style.background = bg; res.style.color = ink;
   valor();
