@@ -139,7 +139,7 @@ function poisson(xl, xv) {
   var m15 = 1 - (pois(0, g) + pois(1, g)), m25 = 1 - (pois(0, g) + pois(1, g) + pois(2, g));
   function fila(n, p) { return "<div class='pr'><span>" + n + "</span><b>" + (p * 100).toFixed(1).replace(".", ",") + "% · cuota " + f2(1 / p) + "</b></div>"; }
   $("prob").innerHTML = "<div class='m' style='font-weight:700;color:var(--fg);font-size:16px'>Probabilidades (goles esperados " + f2(xl) + " – " + f2(xv) + ")</div>" +
-    fila("Gana local", L) + fila("Empate", E) + fila("Gana visitante", V) +
+    fila("Local gana o empata", L + E) + fila("Visitante gana o empata", V + E) +
     fila("Ambos marcan", btts) + fila("Más de 1,5 goles", m15) + fila("Más de 2,5 goles", m25) +
     "<div class='m'>Cuota = nuestra cuota justa (1 ÷ probabilidad).</div>";
   $("prob").hidden = false;
