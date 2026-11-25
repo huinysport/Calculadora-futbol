@@ -23,7 +23,6 @@ th:first-child,td:first-child{text-align:left}
 .fila2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cuotas input{background:var(--bg)}
 .val{font-size:17px;line-height:1.5}
-.pr{display:flex;justify-content:space-between;font-size:17px;padding:2px 0}
 .si{color:var(--si);font-weight:700}.no{color:var(--no);font-weight:700}
 button{font-size:18px;font-weight:700;padding:12px;border:0;border-radius:10px;background:var(--accent);color:var(--bg);width:100%}
 #cod{text-transform:uppercase}
@@ -46,7 +45,6 @@ button{font-size:18px;font-weight:700;padding:12px;border:0;border-radius:10px;b
 <table><thead><tr><th></th><th>Local</th><th>Visitante</th></tr></thead><tbody id="tb"></tbody></table>
 <div class="d" id="dif"></div>
 <div class="r" id="res">Cargando…</div>
-<div class="cuotas" id="prob" hidden></div>
 <div class="cuotas">
 <div class="m" style="font-weight:700;color:var(--fg);font-size:16px">Over / Under 2.5 con cuota</div>
 <div class="fila2"><div><label>Cuota Over 2.5</label><input id="co" inputmode="decimal" placeholder="1,90"></div>
@@ -93,7 +91,6 @@ function calc() {
   var tb = $("tb"); tb.innerHTML = "";
   var res = $("res"), dif = $("dif");
   res.style.background = "#7d8a80"; res.style.color = "#fff";
-  $("prob").hidden = true;
   if (!L || !V) { res.textContent = "Elige los equipos"; dif.textContent = ""; valor(); return; }
   var l = L.v.slice(0, 8), v = V.v.slice(8, 16); // local en casa, visitante fuera
   for (var i = 0; i < 8; i++) {
@@ -108,7 +105,6 @@ function calc() {
   var dP = (atkL + defV) / 2 - (atkV + defL) / 2;
   var dG = (gAtkL + gDefV) / 2 - (gAtkV + gDefL) / 2;
   TPRES = (atkL + defV) / 2 + (atkV + defL) / 2;
-  poisson((l[3] + v[7]) / 2, (v[3] + l[7]) / 2);
   dif.innerHTML = "Diferencial de presión ofensiva (tiros y córneres): <b>" + f2(dP) + "</b><br>Diferencial de goles (tiros al arco y goles): <b>" + f2(dG) + "</b>";
   var t, bg = "#7d8a80", ink = "#fff";
   if ((dP !== 0 ? dP : dG) >= 0) {
@@ -122,26 +118,6 @@ function calc() {
   }
   res.textContent = t; res.style.background = bg; res.style.color = ink;
   valor();
-}
-
-// Probabilidades con Poisson a partir de los goles esperados (igual que la pestaña Kevin)
-function pois(k, m) { var p = Math.exp(-m); for (var i = 1; i <= k; i++) p *= m / i; return p; }
-function poisson(xl, xv) {
-  var N = 10, L = 0, E = 0, V = 0, tot = 0, i, j, p;
-  for (i = 0; i <= N; i++) for (j = 0; j <= N; j++) {
-    p = pois(i, xl) * pois(j, xv); tot += p;
-    if (i > j) L += p; else if (i === j) E += p; else V += p;
-  }
-  L /= tot; E /= tot; V /= tot;
-  var g = xl + xv;
-  var btts = (1 - Math.exp(-xl)) * (1 - Math.exp(-xv));
-  var m15 = 1 - (pois(0, g) + pois(1, g)), m25 = 1 - (pois(0, g) + pois(1, g) + pois(2, g));
-  function fila(n, p) { return "<div class='pr'><span>" + n + "</span><b>" + (p * 100).toFixed(1).replace(".", ",") + "% · cuota " + f2(1 / p) + "</b></div>"; }
-  $("prob").innerHTML = "<div class='m' style='font-weight:700;color:var(--fg);font-size:16px'>Probabilidades (goles esperados " + f2(xl) + " – " + f2(xv) + ")</div>" +
-    fila("Gana local", L) + fila("Empate", E) + fila("Gana visitante", V) +
-    fila("Ambos marcan", btts) + fila("Más de 1,5 goles", m15) + fila("Más de 2,5 goles", m25) +
-    "<div class='m'>Cuota = nuestra cuota justa (1 ÷ probabilidad).</div>";
-  $("prob").hidden = false;
 }
 
 function valor() {
