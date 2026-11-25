@@ -25,7 +25,7 @@ export async function onRequestGet(context) {
     const dispositivo = String(h.get("x-dispositivo") || "").trim().slice(0, 64);
     if (!codigo || !dispositivo) return respuesta(401, { error: "Escribe tu código de acceso.", motivo: "falta" });
 
-    const rc = await leerRango(token, CODIGOS_ID, "Codigos!A2:E1000");
+    const rc = await leerRango(token, CODIGOS_ID, "Codigos!A2:J1000");
     const filasC = rc.values || [];
     let fila = -1;
     for (let i = 0; i < filasC.length; i++) {
@@ -34,6 +34,9 @@ export async function onRequestGet(context) {
     if (fila < 0) return respuesta(401, { error: "Ese código no existe.", motivo: "invalido" });
     const activo = String(filasC[fila][2] || "").trim().toUpperCase();
     if (activo !== "SI" && activo !== "SÍ") return respuesta(401, { error: "Ese código está desactivado.", motivo: "inactivo" });
+    // Vencimiento (columna F, "Vence"): válido hasta el final de ese día (hora de Colombia). Vacía = sin vencimiento.
+    const vence = fechaVence(filasC[fila][5]);
+    if (vence !== null && ahora_ms() >= vence) return respuesta(401, { error: "Tu código venció. Escríbeme para renovarlo.", motivo: "vencido" });
 
     const dispActual = String(filasC[fila][3] || "").trim();
     const ultimo = Date.parse(String(filasC[fila][4] || "")) || 0;
@@ -85,6 +88,26 @@ async function leerRango(token, id, rango) {
     throw new Error("Google Sheets respondió " + r.status + ": " + txt.slice(0, 200));
   }
   return r.json();
+}
+
+function ahora_ms() { return Date.now(); }
+
+// Convierte la celda "Vence" (26/11/2026, 2026-11-26 o número de fecha de Sheets) en el instante en que vence (fin de ese día, UTC-5)
+function fechaVence(x) {
+  if (x === undefined || x === null || String(x).trim() === "") return null;
+  let d, m, y;
+  if (typeof x === "number" || /^\d+(\.\d+)?$/.test(String(x).trim())) {
+    const t = Date.UTC(1899, 11, 30) + Math.floor(Number(x)) * 86400000;
+    const f = new Date(t); y = f.getUTCFullYear(); m = f.getUTCMonth() + 1; d = f.getUTCDate();
+  } else {
+    const s = String(x).trim();
+    let r = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+    if (r) { d = +r[1]; m = +r[2]; y = +r[3]; }
+    else if ((r = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) { y = +r[1]; m = +r[2]; d = +r[3]; }
+    else return null;
+  }
+  // medianoche del día siguiente en Colombia (UTC-5) = 05:00 UTC
+  return Date.UTC(y, m - 1, d + 1, 5, 0, 0);
 }
 
 function numero(x) {
