@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Calculadora de fútbol</title>
+<title>Presur · Análisis estadístico de fútbol</title>
 <style>
 :root{--bg:#f2f4ef;--surface:#fff;--fg:#16211a;--muted:#667569;--line:#d5dcd2;--accent:#1c7a4b;--si:#1c7a4b;--no:#c0392b}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1511;--surface:#18211b;--fg:#e8eee9;--muted:#9bab9f;--line:#2b382f;--accent:#4fc487;--si:#4fc487;--no:#ff7b6b;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Arial,sans-serif;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .w{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
-h1{font-size:22px;margin:4px 0;color:var(--accent)}
+h1{font-size:26px;margin:4px 0 0;color:var(--accent)}
+.sub{color:var(--muted);font-size:14px;margin:0 0 4px}
 label{font-size:15px;font-weight:600;display:block;margin-bottom:4px}
 select,input{width:100%;font-size:19px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;font-size:16px}
@@ -33,13 +34,15 @@ button{font-size:18px;font-weight:700;padding:12px;border:0;border-radius:10px;b
 </head>
 <body>
 <div class="w" id="login" hidden>
-<h1>Calculadora de fútbol</h1>
+<h1>Presur</h1>
+<div class="sub">Análisis estadístico de fútbol</div>
 <div><label>Tu código de acceso</label><input id="cod" placeholder="XXXX-XXXX" autocomplete="off" autocapitalize="characters"></div>
 <button id="entrar">Entrar</button>
 <div class="err" id="err"></div>
 </div>
 <div class="w" id="app" hidden>
-<h1>Calculadora de fútbol</h1>
+<h1>Presur</h1>
+<div class="sub">Análisis estadístico de fútbol</div>
 <div><label>Competición</label><select id="comp"></select></div>
 <div><label>Equipo local (en casa)</label><select id="loc"></select></div>
 <div><label>Equipo visitante (fuera)</label><select id="vis"></select></div>
