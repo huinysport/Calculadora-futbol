@@ -65,8 +65,10 @@ button{font-size:18px;font-weight:700;padding:12px;border:0;border-radius:10px;b
 var MARGEN_VALOR = 0.05;
 // Mínimos del veredicto (cámbialos aquí si quieres)
 var GANA_PRES = 4.5, GANA_GOL = 1.5;      // Gana: mayor que
-var LOCAL_PRES = 1, LOCAL_GOL = 0.5;      // Gana o empata local: desde
+var LOCAL_PRES = 2, LOCAL_GOL = 1;        // Gana o empata local: desde
 var VISITA_PRES = 2, VISITA_GOL = 1;      // Gana o empata visitante: desde (en negativo)
+var PROB_GANA = 0.60;                     // Para "Gana local/visitante": la probabilidad de victoria (Poisson) debe ser al menos esta
+var PROB_MIN = 0.45;                      // Para "Gana o empata": la probabilidad de victoria (Poisson) de ese equipo debe ser al menos esta
 // Si no se cumplen los mínimos de "Gana" ni de "Gana o empata", sale esto según el lado:
 var TEXTO_POSIBLE_LOCAL = "Posible gana o empata local", TEXTO_POSIBLE_VISITA = "Posible gana o empata visitante";
 
@@ -112,16 +114,16 @@ function calc() {
   var dP = (atkL + defV) / 2 - (atkV + defL) / 2;
   var dG = (gAtkL + gDefV) / 2 - (gAtkV + gDefL) / 2;
   TPRES = (atkL + defV) / 2 + (atkV + defL) / 2;
-  poisson((l[3] + v[7]) / 2, (v[3] + l[7]) / 2);
+  var PR = poisson((l[3] + v[7]) / 2, (v[3] + l[7]) / 2);
   dif.innerHTML = "Diferencial de presión ofensiva (tiros y córneres): <b>" + f2(dP) + "</b><br>Diferencial de goles (tiros al arco y goles): <b>" + f2(dG) + "</b>";
   var t, bg = "#7d8a80", ink = "#fff";
   if ((dP !== 0 ? dP : dG) >= 0) {
-    if (dG > GANA_GOL && dP > GANA_PRES) { t = "Gana local"; bg = "#84cc16"; ink = "#14210a"; }
-    else if (dG >= LOCAL_GOL && dP >= LOCAL_PRES) { t = "Gana o empata local"; bg = "#f2c200"; ink = "#1d1a00"; }
+    if (dG > GANA_GOL && dP > GANA_PRES && PR.L >= PROB_GANA) { t = "Gana local"; bg = "#84cc16"; ink = "#14210a"; }
+    else if (dG >= LOCAL_GOL && dP >= LOCAL_PRES && PR.L >= PROB_MIN) { t = "Gana o empata local"; bg = "#f2c200"; ink = "#1d1a00"; }
     else { t = TEXTO_POSIBLE_LOCAL; bg = "#f6e58d"; ink = "#3a3200"; }
   } else {
-    if (dG < -GANA_GOL && dP < -GANA_PRES) { t = "Gana visitante"; bg = "#2563c9"; }
-    else if (dG <= -VISITA_GOL && dP <= -VISITA_PRES) { t = "Gana o empata visitante"; bg = "#ee7fae"; ink = "#2a0b19"; }
+    if (dG < -GANA_GOL && dP < -GANA_PRES && PR.V >= PROB_GANA) { t = "Gana visitante"; bg = "#2563c9"; }
+    else if (dG <= -VISITA_GOL && dP <= -VISITA_PRES && PR.V >= PROB_MIN) { t = "Gana o empata visitante"; bg = "#ee7fae"; ink = "#2a0b19"; }
     else { t = TEXTO_POSIBLE_VISITA; bg = "#f7c6da"; ink = "#2a0b19"; }
   }
   res.textContent = t; res.style.background = bg; res.style.color = ink;
@@ -146,6 +148,7 @@ function poisson(xl, xv) {
     fila("Ambos marcan", btts) + fila("Más de 1,5 goles", m15) + fila("Más de 2,5 goles", m25) +
     "<div class='m'>Cuota = nuestra cuota justa (1 ÷ probabilidad).</div>";
   $("prob").hidden = false;
+  return { L: L, E: E, V: V };
 }
 
 function valor() {
